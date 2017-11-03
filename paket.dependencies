@@ -1,0 +1,5 @@
+source https://www.nuget.org/api/v2
+
+framework: >= netcoreapp2.0
+nuget FAKE
+nuget FSharp.Core
