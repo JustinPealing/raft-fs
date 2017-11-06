@@ -13,6 +13,7 @@ open System
 
 let buildDir  = "./build/"
 let appReferences = !! "/**/*.fsproj"
+let testReferences = !! "/**/*.Test*.fsproj"
 let dotnetcliVersion = "2.0.2"
 let mutable dotnetExePath = "dotnet"
 
@@ -64,6 +65,14 @@ Target "Build" (fun _ ->
     |> Seq.iter (fun p ->
         let dir = System.IO.Path.GetDirectoryName p
         runDotnet dir "build"
+    )
+)
+
+Target "Test" (fun _ ->
+    testReferences
+    |> Seq.iter (fun p ->
+        let dir = System.IO.Path.GetDirectoryName p
+        runDotnet dir "test"
     )
 )
 
