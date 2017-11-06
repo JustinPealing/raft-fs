@@ -35,3 +35,7 @@ let ``Make RPC``() = Async.RunSynchronously <| async {
     let! resp = client.AppendEntries {term = 5}
     Assert.IsTrue(resp.success)
 }
+
+// Workaround for warnings
+[<EntryPoint>]
+let main argv = 0
