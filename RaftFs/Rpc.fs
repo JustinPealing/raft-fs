@@ -16,7 +16,7 @@ module Rpc =
         let server = TcpListener(IPAddress.Parse("127.0.0.1"), port)
         server.Start()
 
-        let rec loop() = async {
+        let rec acceptClientLoop() = async {
             let! client = server.AcceptTcpClientAsync() |> Async.AwaitTask
             let stream = client.GetStream()
             let reader = new StreamReader(stream)
@@ -27,10 +27,13 @@ module Rpc =
             }
             let resp = appendEntries req
 
-            use writer = new StreamWriter(stream)
+            let writer = new StreamWriter(stream)
             do! writer.WriteLineAsync(resp.success.ToString()) |> Async.AwaitTask
-            return! loop()
+            do! writer.FlushAsync() |> Async.AwaitTask
+            
+            return! acceptClientLoop()
         }
+        acceptClientLoop() |> Async.Start
 
         {new IDisposable with
             member this.Dispose() = server.Stop()}
@@ -41,7 +44,7 @@ module Rpc =
             let client = new TcpClient()
             do! client.ConnectAsync(host, port) |> Async.AwaitTask
             use stream = client.GetStream()
-
+            
             let writer = new StreamWriter(stream)
             do! writer.WriteLineAsync(req.term.ToString()) |> Async.AwaitTask
             do! writer.FlushAsync() |> Async.AwaitTask
