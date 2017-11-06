@@ -1,5 +1,6 @@
 open NUnit.Framework
 open RaftFs
+open RaftFs.Messages
 
 /// <summary>
 /// The Rpc.CreateServer function creates a server which is used to recive RPCs. It needs a
@@ -7,9 +8,9 @@ open RaftFs
 /// </summary>
 [<Test>]
 let ``Create Server``() =
-    let successFalse (req:Rpc.AppendEntriesArguments) : Rpc.AppendEntriesResult =
+    let appendEntries req =
         {success = false}
-    use server = Rpc.CreateServer 13000 successFalse
+    use server = Rpc.CreateServer 13000 appendEntries
     Assert.NotNull(server)
 
 /// <summary>
@@ -25,11 +26,11 @@ let ``Create Client``() =
 /// </summary>
 [<Test>]
 let ``Make RPC``() = Async.RunSynchronously <| async {
-    let appendEntries (req:Rpc.AppendEntriesArguments) : Rpc.AppendEntriesResult =
+    let appendEntries req =
         Assert.Equals(5, req.term) |> ignore
         {success = true}
 
-    use server = Rpc.CreateServer 13000 appendEntries
+    use _ = Rpc.CreateServer 13000 appendEntries
     use client = Rpc.CreateClient "localhost" 13000
     let! resp = client.AppendEntries {term = 5}
     Assert.IsTrue(resp.success)

@@ -4,16 +4,9 @@ open System
 open System.IO
 open System.Net
 open System.Net.Sockets
+open Messages
 
 module Rpc = 
-
-    type AppendEntriesArguments = {
-        term: int
-    }
-
-    type AppendEntriesResult = {
-        success: bool
-    }
 
     type IRpcClient =
         inherit IDisposable
