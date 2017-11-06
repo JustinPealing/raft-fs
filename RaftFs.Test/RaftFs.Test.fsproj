@@ -1,11 +1,17 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netcoreapp2.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="**\*.fs" />
+    <ProjectReference Include="..\RaftFs\RaftFs.fsproj">
+      <Name>RaftFs.fsproj</Name>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="**/*.fs" />
   </ItemGroup>
 
   <ItemGroup>
