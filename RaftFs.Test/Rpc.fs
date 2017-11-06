@@ -17,19 +17,20 @@ let ``Create Server``() =
 /// </summary>
 [<Test>]
 let ``Create Client``() =
-    use client = Rpc.CreateClient("localhost:13000")
+    use client = Rpc.CreateClient "localhost" 13000
     Assert.NotNull(client)
 
 /// <summary>
 /// Basic test of making a RPC using server + client.
 /// </summary>
 [<Test>]
-let ``Make RPC``() = 
+let ``Make RPC``() = Async.RunSynchronously <| async {
     let appendEntries (req:Rpc.AppendEntriesArguments) : Rpc.AppendEntriesResult =
         Assert.Equals(5, req.term) |> ignore
         {success = true}
 
     use server = Rpc.CreateServer 13000 appendEntries
-    use client = Rpc.CreateClient("localhost:13000")
-    let resp = client.AppendEntries {term = 5}
+    use client = Rpc.CreateClient "localhost" 13000
+    let! resp = client.AppendEntries {term = 5}
     Assert.IsTrue(resp.success)
+}
