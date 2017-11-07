@@ -6,7 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="**\*.fs" />
+    <Compile Include="Messages.fs" />
+    <Compile Include="Election.fs" />
+    <Compile Include="Serialization.fs" />
+    <Compile Include="Rpc.fs" />
   </ItemGroup>
 
 </Project>
