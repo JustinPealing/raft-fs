@@ -11,7 +11,13 @@ module SerializationTest =
     [<Test>]
     let ``Serialized AppendEntriesResult should be byte[]``() =
         let response = {success = false}
-        let data = Serialization.Serialize response
+        let data = Serialization.SerializeAppendEntriesResult response
+        Assert.That(data, Is.TypeOf<byte[]>())
+
+    [<Test>]
+    let ``Serialized AppendEntriesArguments should be byte[]``() =
+        let response = {term = 7}
+        let data = Serialization.SerializeAppendEntiresArguments response
         Assert.That(data, Is.TypeOf<byte[]>())
     
     /// <summary>
@@ -20,5 +26,11 @@ module SerializationTest =
     [<Test>]
     let ``Serialize and Deserialize AppendEntriesResult``() = 
         let response = {success = false}
-        let data = Serialization.DeserializeAppendEntriesResult (Serialization.Serialize response)
+        let data = Serialization.DeserializeAppendEntriesResult (Serialization.SerializeAppendEntriesResult response)
+        Assert.That(data, Is.EqualTo(response))
+
+    [<Test>]
+    let ``Serialize and Deserialize AppendEntriesArguments``() = 
+        let response = {term = 17}
+        let data = Serialization.DeserializeAppendEntriesArguments (Serialization.SerializeAppendEntiresArguments response)
         Assert.That(data, Is.EqualTo(response))
