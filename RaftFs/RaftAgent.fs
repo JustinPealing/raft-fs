@@ -14,7 +14,7 @@ type State = {
     votedFor : int
 }
 
-type Message = 
+type RaftMessage = 
     | ElectionTimeout
     | RequestVote of RequestVoteArguments
     | AppendEntries of AppendEntriesArguments
@@ -32,10 +32,17 @@ module RaftAgent =
         | ElectionTimeout -> electionTimeout state
         | _ -> state
 
-    let agent = MailboxProcessor.Start(fun inbox -> 
+    type Message = RaftMessage * AsyncReplyChannel<State>
+
+    let agent = MailboxProcessor<Message>.Start(fun inbox -> 
         let rec messageLoop oldState = async {
-            let! msg = inbox.Receive()
-            return! messageLoop (processMessage oldState msg)
+            let! (msg, replyChannel) = inbox.Receive()
+            let newState = processMessage oldState msg
+            replyChannel.Reply(newState)
+            return! messageLoop newState
         }
         messageLoop initialState
     )
+
+    let ElectionTimeout = 
+        agent.PostAndAsyncReply(fun replyChannel -> ElectionTimeout, replyChannel)

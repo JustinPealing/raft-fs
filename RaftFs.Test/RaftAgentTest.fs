@@ -17,3 +17,8 @@ module RaftAgentTest =
         let state = { state = Follower ; currentTerm = 0 ; votedFor = 0 }
         let nextState = RaftAgent.electionTimeout state
         Assert.AreEqual(Candidate, nextState.state)
+
+    [<Test>]
+    let ``ElectionTimeout via MailboxProcessor``() =
+        let state = RaftAgent.ElectionTimeout |> Async.RunSynchronously
+        Assert.AreEqual(Candidate, state.state)
