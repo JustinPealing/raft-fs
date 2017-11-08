@@ -27,3 +27,17 @@ module Messages =
         [<ProtoMember(1)>] term: int;
         [<ProtoMember(2)>] success: bool;
     }
+
+    [<ProtoContract; Serializable; CLIMutable>]
+    type RequestVoteArguments = {
+        [<ProtoMember(1)>] term: int;
+        [<ProtoMember(2)>] candidateId: int;
+        [<ProtoMember(3)>] lastLogIndex: int;
+        [<ProtoMember(4)>] lastLogTerm: int;
+    }
+
+    [<ProtoContract; Serializable; CLIMutable>]
+    type RequestVoteResult = {
+        [<ProtoMember(1)>] term: int;
+        [<ProtoMember(2)>] voteGranted: bool;
+    }

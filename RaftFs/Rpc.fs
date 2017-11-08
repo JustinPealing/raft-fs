@@ -22,6 +22,7 @@ module Rpc =
     type IRpcClient =
         inherit IDisposable
         abstract member AppendEntries : AppendEntriesArguments -> Async<AppendEntriesResult>
+        abstract member RequestVote : RequestVoteArguments -> Async<RequestVoteResult>
 
     let serialize obj =
         use stream = new MemoryStream()
@@ -32,7 +33,7 @@ module Rpc =
         use stream = new MemoryStream(data)
         Serializer.Deserialize<'T>(stream)
 
-    let CreateServer port appendEntries =
+    let CreateServer port appendEntries requestVote =
         let server = TcpListener(IPAddress.Parse("127.0.0.1"), port)
         server.Start()
 
@@ -63,7 +64,7 @@ module Rpc =
 
     let CreateClient (host:string) (port:int) =
 
-        let appendEntires (request:AppendEntriesArguments) = async {
+        let rpc request = async {
             let client = new TcpClient()
             do! client.ConnectAsync(host, port) |> Async.AwaitTask
             use stream = client.GetStream()
@@ -83,4 +84,5 @@ module Rpc =
 
         {new IRpcClient with
             member this.Dispose() = ()
-            member this.AppendEntries req = appendEntires req }
+            member this.AppendEntries req = rpc req
+            member this.RequestVote req = rpc req }
