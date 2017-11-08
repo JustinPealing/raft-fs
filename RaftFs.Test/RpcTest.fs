@@ -13,7 +13,7 @@ module RpcTest =
     [<Ignore("Broken because of timing")>]
     let ``Create Server``() =
         let appendEntries req =
-            {success = false}
+            {term = 1; success = false}
         use server = Rpc.CreateServer 13000 appendEntries
         Assert.NotNull(server)
 
@@ -30,11 +30,17 @@ module RpcTest =
     /// </summary>
     [<Test>]
     let ``Make RPC``() =
-        let appendEntries req =
-            Assert.AreEqual(5, req.term) |> ignore
-            {success = true}
+        let appendEntries (req:AppendEntriesArguments) =
+            Assert.AreEqual(5, req.term)
+            Assert.AreEqual(3, req.leaderId)
+            Assert.AreEqual(1, req.prevLogIndex)
+            Assert.AreEqual(2, req.prevLogTerm)
+            // TODO: entries is null for some reason
+            Assert.AreEqual(7, req.leaderCommit)
+            {term = 2; success = true}
 
         use server = Rpc.CreateServer 13000 appendEntries
         use client = Rpc.CreateClient "localhost" 13000
-        let resp = (client.AppendEntries {term = 5}) |> Async.RunSynchronously
+        let request = { term = 5; leaderId = 3; prevLogIndex = 1; prevLogTerm = 2; entries = Array.empty<LogEntry>; leaderCommit = 7 }
+        let resp = (client.AppendEntries request) |> Async.RunSynchronously
         Assert.IsTrue(resp.success)
