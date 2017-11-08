@@ -8,8 +8,11 @@
   <ItemGroup>
     <Compile Include="Messages.fs" />
     <Compile Include="Election.fs" />
-    <Compile Include="Serialization.fs" />
     <Compile Include="Rpc.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="protobuf-net" Version="2.3.2" />
   </ItemGroup>
 
 </Project>

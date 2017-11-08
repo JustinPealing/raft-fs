@@ -12,7 +12,6 @@
 
   <ItemGroup>
     <Compile Include="RpcTest.fs" />
-    <Compile Include="SerializationTest.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

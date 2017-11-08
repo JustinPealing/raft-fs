@@ -5,6 +5,7 @@ open System.IO
 open System.Net
 open System.Net.Sockets
 open Messages
+open ProtoBuf
 
 module Rpc = 
 
@@ -22,6 +23,15 @@ module Rpc =
         inherit IDisposable
         abstract member AppendEntries : AppendEntriesArguments -> Async<AppendEntriesResult>
 
+    let serialize obj =
+        use stream = new MemoryStream()
+        Serializer.Serialize(stream, obj)
+        stream.ToArray()
+
+    let deserialize<'T> (data:byte[]) =
+        use stream = new MemoryStream(data)
+        Serializer.Deserialize<'T>(stream)
+
     let CreateServer port appendEntries =
         let server = TcpListener(IPAddress.Parse("127.0.0.1"), port)
         server.Start()
@@ -34,10 +44,10 @@ module Rpc =
             let count = BitConverter.ToInt32(header, 0)
 
             let! body = stream.ReadExactlyAsync count
-            let request = Serialization.DeserializeAppendEntriesArguments body
+            let request = deserialize body
 
             let response = appendEntries request
-            let responseBody = Serialization.SerializeAppendEntriesResult response
+            let responseBody = serialize response
 
             let responseHeader = BitConverter.GetBytes responseBody.Length
             do! stream.WriteAsync(responseHeader, 0, 4) |> Async.AwaitTask
@@ -58,7 +68,7 @@ module Rpc =
             do! client.ConnectAsync(host, port) |> Async.AwaitTask
             use stream = client.GetStream()
             
-            let requestBody = Serialization.SerializeAppendEntiresArguments request
+            let requestBody = serialize request
             let requestHeader = BitConverter.GetBytes requestBody.Length
             do! stream.WriteAsync(requestHeader, 0, 4) |> Async.AwaitTask
             do! stream.WriteAsync(requestBody, 0, requestBody.Length) |> Async.AwaitTask
@@ -68,7 +78,7 @@ module Rpc =
             let count = BitConverter.ToInt32(responseHeader, 0)
 
             let! responseBody = stream.ReadExactlyAsync count
-            return Serialization.DeserializeAppendEntriesResult responseBody
+            return deserialize responseBody
         }
 
         {new IRpcClient with
