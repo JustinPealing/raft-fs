@@ -9,6 +9,7 @@
     <Compile Include="Messages.fs" />
     <Compile Include="Election.fs" />
     <Compile Include="Rpc.fs" />
+    <Compile Include="RaftAgent.fs" />
   </ItemGroup>
 
   <ItemGroup>

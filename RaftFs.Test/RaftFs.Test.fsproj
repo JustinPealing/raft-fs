@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <Compile Include="RpcTest.fs" />
+    <Compile Include="RaftAgentTest.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
