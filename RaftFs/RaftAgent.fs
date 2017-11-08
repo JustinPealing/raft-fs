@@ -14,10 +14,11 @@ type State = {
     votedFor : int
 }
 
-type RaftMessage = 
-    | ElectionTimeout
-    | RequestVote of RequestVoteArguments
-    | AppendEntries of AppendEntriesArguments
+type Message = 
+    | GetState of AsyncReplyChannel<State>
+    | ElectionTimeout of AsyncReplyChannel<unit>
+    | RequestVote of RequestVoteArguments * AsyncReplyChannel<RequestVoteResult>
+    | AppendEntries of AppendEntriesArguments * AsyncReplyChannel<AppendEntriesResult>
 
 module RaftAgent = 
 
@@ -29,20 +30,37 @@ module RaftAgent =
 
     let processMessage state msg = 
         match msg with
-        | ElectionTimeout -> electionTimeout state
-        | _ -> state
-
-    type Message = RaftMessage * AsyncReplyChannel<State>
+        | GetState rc ->
+            rc.Reply state
+            state
+        | ElectionTimeout rc ->
+            let newState = electionTimeout state
+            rc.Reply()
+            newState
+        | RequestVote (request, rc) ->
+            rc.Reply {term = 2; voteGranted = true}
+            state
+        | AppendEntries (request, rc) ->
+            rc.Reply {term = 2; success = true}
+            state
 
     let agent = MailboxProcessor<Message>.Start(fun inbox -> 
         let rec messageLoop oldState = async {
-            let! (msg, replyChannel) = inbox.Receive()
+            let! msg = inbox.Receive()
             let newState = processMessage oldState msg
-            replyChannel.Reply(newState)
             return! messageLoop newState
         }
         messageLoop initialState
     )
 
-    let ElectionTimeout = 
-        agent.PostAndAsyncReply(fun replyChannel -> ElectionTimeout, replyChannel)
+    let GetState() = 
+        agent.PostAndAsyncReply(GetState)
+
+    let ElectionTimeout() = 
+        agent.PostAndAsyncReply(ElectionTimeout)
+
+    let RequestVote request =
+        agent.PostAndAsyncReply(fun rc -> RequestVote (request, rc))
+
+    let AppendEntries request =
+        agent.PostAndAsyncReply(fun rc -> AppendEntries (request, rc))

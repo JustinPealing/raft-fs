@@ -2,6 +2,7 @@ namespace RaftFs.Test
 
 open NUnit.Framework
 open RaftFs
+open RaftFs.Messages
 
 module RaftAgentTest = 
     
@@ -19,6 +20,14 @@ module RaftAgentTest =
         Assert.AreEqual(Candidate, nextState.state)
 
     [<Test>]
-    let ``ElectionTimeout via MailboxProcessor``() =
-        let state = RaftAgent.ElectionTimeout |> Async.RunSynchronously
+    let ``ElectionTimeout via MailboxProcessor``() = Async.RunSynchronously <| async {
+        do! RaftAgent.ElectionTimeout()
+        let! state = RaftAgent.GetState()
         Assert.AreEqual(Candidate, state.state)
+    }
+
+    [<Test>]
+    let ``Post RequestVote``() =
+        let request = { term = 5; candidateId = 3; lastLogIndex = 1; lastLogTerm = 2 }
+        let result = RaftAgent.RequestVote request |> Async.RunSynchronously
+        Assert.AreEqual(2, result.term)
