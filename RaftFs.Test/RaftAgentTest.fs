@@ -78,14 +78,37 @@ module RaftAgentTest =
 
         let! result = agent.RequestVote { term = 1; candidateId = 3; lastLogIndex = 0; lastLogTerm = 0 }
         Assert.IsFalse(result.voteGranted)
+        Assert.AreEqual(2, result.term)
         
         let! state = agent.GetState()
         Assert.AreEqual(Follower, state.state)
         Assert.AreEqual(2, state.currentTerm)
     }
     
+    
+    /// <summary>
+    /// Votes should be granted to Candidates in later terms, even if a vote has already been granted to another
+    /// candidate in the current term.
+    /// </summary>
+    [<Test>]
+    let ``Votes granted to later terms``() = Async.RunSynchronously <| async {
+        let agent = RaftAgent(50.0, 50.0)
+
+        // Candidate 2 sends a RequestVote RPC, which should result in a granted vote
+        let! result = agent.RequestVote { term = 1; candidateId = 2; lastLogIndex = 0; lastLogTerm = 0 }
+        Assert.IsTrue(result.voteGranted, "Vote not granted to the first candidate")
+
+        // However Candidate 3 has a later term, so the vote should be overidden
+        let! result = agent.RequestVote { term = 2; candidateId = 3; lastLogIndex = 0; lastLogTerm = 0 }
+        Assert.IsTrue(result.voteGranted, "Vote not granted to a later term")
+        
+        let! state = agent.GetState()
+        Assert.AreEqual(Follower, state.state)
+        Assert.AreEqual(2, state.currentTerm)
+        Assert.AreEqual(3, state.votedFor)
+    }
+
     // TODO:
-    // - Vote request for later term
     // - RequestVote RPC test cases for Candidates and Leaders
     // - Vote granted to self when convert to Follower
     // - Test cases when election timeout is restarted

@@ -29,13 +29,13 @@ type RaftAgent(minElectionTimeout, maxElectionTimeout, initialState) =
             currentTerm = state.currentTerm + 1 }
 
     let requestVote state (request:RequestVoteArguments) (rc:AsyncReplyChannel<RequestVoteResult>) =
-        if state.votedFor = 0 && state.currentTerm <= request.term then
+        if (state.votedFor = 0 && state.currentTerm <= request.term) || state.currentTerm < request.term then
             rc.Reply { term = request.term; voteGranted = true }
             { state with
                 currentTerm = request.term;
                 votedFor = request.candidateId }
         else
-            rc.Reply { term = request.term; voteGranted = false }
+            rc.Reply { term = state.currentTerm; voteGranted = false }
             state
 
     let processMessage state msg = 
