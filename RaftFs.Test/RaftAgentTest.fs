@@ -8,11 +8,11 @@ module RaftAgentTest =
 
     /// <summary>
     /// A node is initialized to the follower state. If no messages are recieved before an election timeout
-    /// then the node should become a candidate.
+    /// then the node should become a Candidate.
     /// </summary>
     [<Test>]
     let ``Election timeout for Follower``() = Async.RunSynchronously <| async {
-        let agent = RaftAgent(50.0, 50.0)
+        let agent = RaftAgent(50.0, 50.0, 7)
 
         // Check the node state is correctly initialized
         let! state = agent.GetState()
@@ -24,6 +24,7 @@ module RaftAgentTest =
         let! state = agent.GetState()
         Assert.AreEqual(Candidate, state.state)
         Assert.AreEqual(1, state.currentTerm)
+        Assert.AreEqual(Some 7, state.votedFor)
     }
     
     /// <summary>
@@ -32,7 +33,7 @@ module RaftAgentTest =
     /// </summary>
     [<Test>]
     let ``RequestVote from Candidate``() = Async.RunSynchronously <| async {
-        let agent = RaftAgent(50.0, 50.0)
+        let agent = RaftAgent(50.0, 50.0, 7)
 
         // Send the RequestVote RPC and check the response
         let! result = agent.RequestVote { term = 1; candidateId = 2; lastLogIndex = 0; lastLogTerm = 0 }
@@ -43,7 +44,7 @@ module RaftAgentTest =
         let! state = agent.GetState()
         Assert.AreEqual(Follower, state.state)
         Assert.AreEqual(1, state.currentTerm)
-        Assert.AreEqual(2, state.votedFor)
+        Assert.AreEqual(Some 2, state.votedFor)
     }
     
     /// <summary>
@@ -51,7 +52,7 @@ module RaftAgentTest =
     /// </summary>
     [<Test>]
     let ``Vote not granted to two candidates in the same term``() = Async.RunSynchronously <| async {
-        let agent = RaftAgent(50.0, 50.0)
+        let agent = RaftAgent(50.0, 50.0, 7)
 
         // Candidate 2 sends a RequestVote RPC, which should result in a granted vote
         let! result = agent.RequestVote { term = 1; candidateId = 2; lastLogIndex = 0; lastLogTerm = 0 }
@@ -65,16 +66,16 @@ module RaftAgentTest =
         let! state = agent.GetState()
         Assert.AreEqual(Follower, state.state)
         Assert.AreEqual(1, state.currentTerm)
-        Assert.AreEqual(2, state.votedFor)
+        Assert.AreEqual(Some 2, state.votedFor)
     }
     
     /// <summary>
-    /// A vote should not be granted to a Candidate with an earlier term than the current one.acos
+    /// A vote should not be granted to a Candidate with an earlier term than the current one.
     /// </summary>
     [<Test>]
     let ``Votes not granted to earlier term``() = Async.RunSynchronously <| async {
-        let state = { state = Follower; currentTerm = 2; votedFor = 0; electionTimeout = None }
-        let agent = RaftAgent(50.0, 50.0, state)
+        let state = { state = Follower; currentTerm = 2; votedFor = None; electionTimeout = None }
+        let agent = RaftAgent(50.0, 50.0, 7, state)
 
         let! result = agent.RequestVote { term = 1; candidateId = 3; lastLogIndex = 0; lastLogTerm = 0 }
         Assert.IsFalse(result.voteGranted)
@@ -83,8 +84,8 @@ module RaftAgentTest =
         let! state = agent.GetState()
         Assert.AreEqual(Follower, state.state)
         Assert.AreEqual(2, state.currentTerm)
+        Assert.AreEqual(None, state.votedFor)
     }
-    
     
     /// <summary>
     /// Votes should be granted to Candidates in later terms, even if a vote has already been granted to another
@@ -92,7 +93,7 @@ module RaftAgentTest =
     /// </summary>
     [<Test>]
     let ``Votes granted to later terms``() = Async.RunSynchronously <| async {
-        let agent = RaftAgent(50.0, 50.0)
+        let agent = RaftAgent(50.0, 50.0, 7)
 
         // Candidate 2 sends a RequestVote RPC, which should result in a granted vote
         let! result = agent.RequestVote { term = 1; candidateId = 2; lastLogIndex = 0; lastLogTerm = 0 }
@@ -105,7 +106,7 @@ module RaftAgentTest =
         let! state = agent.GetState()
         Assert.AreEqual(Follower, state.state)
         Assert.AreEqual(2, state.currentTerm)
-        Assert.AreEqual(3, state.votedFor)
+        Assert.AreEqual(Some 3, state.votedFor)
     }
 
     // TODO:

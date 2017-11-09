@@ -11,7 +11,7 @@ type NodeState =
 type State = {
     state : NodeState
     currentTerm : int
-    votedFor : int
+    votedFor : int option
     electionTimeout : Elections.ElectionTimeout option
 }
 
@@ -21,19 +21,20 @@ type Message =
     | RequestVote of RequestVoteArguments * AsyncReplyChannel<RequestVoteResult>
     | AppendEntries of AppendEntriesArguments * AsyncReplyChannel<AppendEntriesResult>
 
-type RaftAgent(minElectionTimeout, maxElectionTimeout, initialState) =
+type RaftAgent(minElectionTimeout, maxElectionTimeout, nodeId, initialState) =
 
     let electionTimeout state =
         { state with
             state = Candidate;
-            currentTerm = state.currentTerm + 1 }
+            currentTerm = state.currentTerm + 1;
+            votedFor = Some nodeId }
 
     let requestVote state (request:RequestVoteArguments) (rc:AsyncReplyChannel<RequestVoteResult>) =
-        if (state.votedFor = 0 && state.currentTerm <= request.term) || state.currentTerm < request.term then
+        if (state.votedFor = None && state.currentTerm <= request.term) || state.currentTerm < request.term then
             rc.Reply { term = request.term; voteGranted = true }
             { state with
                 currentTerm = request.term;
-                votedFor = request.candidateId }
+                votedFor = Some request.candidateId }
         else
             rc.Reply { term = state.currentTerm; voteGranted = false }
             state
@@ -60,8 +61,8 @@ type RaftAgent(minElectionTimeout, maxElectionTimeout, initialState) =
         messageLoop { initialState with electionTimeout = Some electionTimeout }
     )
 
-    new(minElectionTimeout, maxElectionTimeout) =
-        RaftAgent(minElectionTimeout, maxElectionTimeout, { state = Follower; currentTerm = 0; votedFor = 0; electionTimeout = None })
+    new(minElectionTimeout, maxElectionTimeout, nodeId) =
+        RaftAgent(minElectionTimeout, maxElectionTimeout, nodeId, { state = Follower; currentTerm = 0; votedFor = None; electionTimeout = None })
 
     member this.GetState() = 
         agent.PostAndAsyncReply(GetState)
