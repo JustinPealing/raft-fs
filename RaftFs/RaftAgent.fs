@@ -12,7 +12,7 @@ type State = {
     state : NodeState
     currentTerm : int
     votedFor : int
-    electionTimeout : Elections.ElectionTimeout
+    electionTimeout : Elections.ElectionTimeout option
 }
 
 type Message = 
@@ -21,7 +21,7 @@ type Message =
     | RequestVote of RequestVoteArguments * AsyncReplyChannel<RequestVoteResult>
     | AppendEntries of AppendEntriesArguments * AsyncReplyChannel<AppendEntriesResult>
 
-type RaftAgent(minElectionTimeout, maxElectionTimeout) =
+type RaftAgent(minElectionTimeout, maxElectionTimeout, initialState) =
 
     let electionTimeout state =
         { state with
@@ -29,7 +29,7 @@ type RaftAgent(minElectionTimeout, maxElectionTimeout) =
             currentTerm = state.currentTerm + 1 }
 
     let requestVote state (request:RequestVoteArguments) (rc:AsyncReplyChannel<RequestVoteResult>) =
-        if state.votedFor = 0 then
+        if state.votedFor = 0 && state.currentTerm <= request.term then
             rc.Reply { term = request.term; voteGranted = true }
             { state with
                 currentTerm = request.term;
@@ -55,11 +55,13 @@ type RaftAgent(minElectionTimeout, maxElectionTimeout) =
             let newState = processMessage oldState msg
             return! messageLoop newState
         }
-        let initialState = { state = Follower; currentTerm = 0; votedFor = 0;
-          electionTimeout = Elections.startElectionTimeout (TimeSpan.FromMilliseconds minElectionTimeout) (fun () -> inbox.Post ElectionTimeout) }
-
-        messageLoop initialState
+        let electionTimeout = 
+            Elections.startElectionTimeout (TimeSpan.FromMilliseconds minElectionTimeout) (fun () -> inbox.Post ElectionTimeout)
+        messageLoop { initialState with electionTimeout = Some electionTimeout }
     )
+
+    new(minElectionTimeout, maxElectionTimeout) =
+        RaftAgent(minElectionTimeout, maxElectionTimeout, { state = Follower; currentTerm = 0; votedFor = 0; electionTimeout = None })
 
     member this.GetState() = 
         agent.PostAndAsyncReply(GetState)

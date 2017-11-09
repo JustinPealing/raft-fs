@@ -8,10 +8,7 @@ module RaftAgentTest =
 
     /// <summary>
     /// A node is initialized to the follower state. If no messages are recieved before an election timeout
-    /// then the node should become a candidate:
-    /// - Changes state to "Candidate"
-    /// - Increments the current term
-    /// - Starts a new election timeout
+    /// then the node should become a candidate.
     /// </summary>
     [<Test>]
     let ``Election timeout for Follower``() = Async.RunSynchronously <| async {
@@ -71,7 +68,24 @@ module RaftAgentTest =
         Assert.AreEqual(2, state.votedFor)
     }
     
+    /// <summary>
+    /// A vote should not be granted to a Candidate with an earlier term than the current one.acos
+    /// </summary>
+    [<Test>]
+    let ``Votes not granted to earlier term``() = Async.RunSynchronously <| async {
+        let state = { state = Follower; currentTerm = 2; votedFor = 0; electionTimeout = None }
+        let agent = RaftAgent(50.0, 50.0, state)
+
+        let! result = agent.RequestVote { term = 1; candidateId = 3; lastLogIndex = 0; lastLogTerm = 0 }
+        Assert.IsFalse(result.voteGranted)
+        
+        let! state = agent.GetState()
+        Assert.AreEqual(Follower, state.state)
+        Assert.AreEqual(2, state.currentTerm)
+    }
+    
     // TODO:
-    // - Votes not granted to earlier term
     // - Vote request for later term
     // - RequestVote RPC test cases for Candidates and Leaders
+    // - Vote granted to self when convert to Follower
+    // - Test cases when election timeout is restarted
