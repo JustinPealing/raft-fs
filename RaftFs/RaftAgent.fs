@@ -12,6 +12,7 @@ type State = {
     state : NodeState
     currentTerm : int
     votedFor : int
+    electionTimeout : Elections.ElectionTimeout
 }
 
 type Message = 
@@ -20,10 +21,7 @@ type Message =
     | RequestVote of RequestVoteArguments * AsyncReplyChannel<RequestVoteResult>
     | AppendEntries of AppendEntriesArguments * AsyncReplyChannel<AppendEntriesResult>
 
-type RaftAgent() = 
-
-    let initialState =
-        { state = Follower; currentTerm = 0; votedFor = 0; }
+type RaftAgent(minElectionTimeout, maxElectionTimeout) =
 
     let electionTimeout state =
         { state with
@@ -50,14 +48,14 @@ type RaftAgent() =
             let newState = processMessage oldState msg
             return! messageLoop newState
         }
+        let initialState = { state = Follower; currentTerm = 0; votedFor = 0;
+          electionTimeout = Elections.startElectionTimeout (TimeSpan.FromMilliseconds minElectionTimeout) (fun () -> inbox.Post ElectionTimeout) }
+
         messageLoop initialState
     )
 
     member this.GetState() = 
         agent.PostAndAsyncReply(GetState)
-
-    member this.ElectionTimeout() = 
-        agent.Post(ElectionTimeout)
 
     member this.RequestVote request =
         agent.PostAndAsyncReply(fun rc -> RequestVote (request, rc))

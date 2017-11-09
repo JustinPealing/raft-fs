@@ -5,34 +5,33 @@ open RaftFs
 open RaftFs.Messages
 
 module RaftAgentTest = 
-    
+
     /// <summary>
-    /// If an election term times out for a node in the follower state it means that
-    /// there are no known leaders, so the follower becomes a candidate and does the following:
+    /// A node is initialized to the follower state. If no messages are recieved before an election timeout
+    /// then the node should become a candidate:
     /// - Changes state to "Candidate"
     /// - Increments the current term
     /// - Starts a new election timeout
     /// </summary>
     [<Test>]
     let ``Election timeout for Follower``() = Async.RunSynchronously <| async {
-        let agent = RaftAgent()
-        agent.ElectionTimeout()
-        let! state = agent.GetState()
-        Assert.AreEqual(Candidate, state.state)
-        Assert.AreEqual(1, state.currentTerm)
-    }
+        let agent = RaftAgent(50.0, 50.0)
 
-    [<Test>]
-    let ``ElectionTimeout via MailboxProcessor``() = Async.RunSynchronously <| async {
-        let agent = RaftAgent()
-        agent.ElectionTimeout()
+        // Check the node state is correctly initialized
         let! state = agent.GetState()
-        Assert.AreEqual(Candidate, state.state)
-    }
+        Assert.AreEqual(Follower, state.state)
+        Assert.AreEqual(0, state.currentTerm)
 
+        // Wait for the election timeout and check the state again
+        do! Async.Sleep 60
+        let! state2 = agent.GetState()
+        Assert.AreEqual(Candidate, state2.state)
+        Assert.AreEqual(1, state2.currentTerm)
+    }
+    
     [<Test>]
     let ``Post RequestVote``() = Async.RunSynchronously <| async {
-        let agent = RaftAgent()
+        let agent = RaftAgent(50.0, 50.0)
         let! result = agent.RequestVote { term = 5; candidateId = 3; lastLogIndex = 1; lastLogTerm = 2 }
         Assert.AreEqual(2, result.term)
     }
