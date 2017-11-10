@@ -26,6 +26,26 @@ module RaftAgentTest =
         Assert.AreEqual(1, state.currentTerm)
         Assert.AreEqual(Some 7, state.votedFor)
     }
+
+    /// <summary>
+    /// If a candidate does not recieve any votes before the election timeout, a new election term is started.
+    /// </summary>
+    [<Test>]
+    let ``Candidate election times out``() = Async.RunSynchronously <| async {
+        let agent = RaftAgent(50.0, 50.0, 7)
+
+        // Check the node state is correctly initialized
+        let! state = agent.GetState()
+        Assert.AreEqual(Follower, state.state)
+        Assert.AreEqual(0, state.currentTerm)
+
+        // Wait for two elections to timeout and check the state again
+        do! Async.Sleep 110
+        let! state = agent.GetState()
+        Assert.AreEqual(Candidate, state.state)
+        Assert.AreEqual(2, state.currentTerm)
+        Assert.AreEqual(Some 7, state.votedFor)
+    }
     
     /// <summary>
     /// Followers recieving RequestVote RPCs should give their vote if the Candidates term is greater than or equal
@@ -112,4 +132,3 @@ module RaftAgentTest =
     // TODO:
     // - RequestVote RPC test cases for Candidates and Leaders
     // - Vote granted to self when convert to Follower
-    // - Test cases when election timeout is restarted

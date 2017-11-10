@@ -2,6 +2,8 @@ namespace RaftFs
 
 open System
 open Messages
+open System.Diagnostics.SymbolStore
+open Elections
 
 type NodeState =
     | Follower
@@ -23,11 +25,15 @@ type Message =
 
 type RaftAgent(minElectionTimeout, maxElectionTimeout, nodeId, initialState) =
 
-    let electionTimeout state =
+    let startNewElectionTimeout (agent:MailboxProcessor<Message>) = 
+        Elections.startElectionTimeout (TimeSpan.FromMilliseconds minElectionTimeout) (fun () -> agent.Post ElectionTimeout)
+
+    let electionTimeout agent state =
         { state with
             state = Candidate;
             currentTerm = state.currentTerm + 1;
-            votedFor = Some nodeId }
+            votedFor = Some nodeId;
+            electionTimeout = Some (startNewElectionTimeout agent) }
 
     let requestVote state (request:RequestVoteArguments) (rc:AsyncReplyChannel<RequestVoteResult>) =
         if (state.votedFor = None && state.currentTerm <= request.term) || state.currentTerm < request.term then
@@ -39,12 +45,12 @@ type RaftAgent(minElectionTimeout, maxElectionTimeout, nodeId, initialState) =
             rc.Reply { term = state.currentTerm; voteGranted = false }
             state
 
-    let processMessage state msg = 
+    let processMessage agent state msg = 
         match msg with
         | GetState rc ->
             rc.Reply state
             state
-        | ElectionTimeout -> electionTimeout state
+        | ElectionTimeout -> electionTimeout agent state
         | RequestVote (request, rc) -> requestVote state request rc
         | AppendEntries (request, rc) ->
             rc.Reply {term = 2; success = true}
@@ -53,12 +59,10 @@ type RaftAgent(minElectionTimeout, maxElectionTimeout, nodeId, initialState) =
     let agent = MailboxProcessor<Message>.Start(fun inbox -> 
         let rec messageLoop oldState = async {
             let! msg = inbox.Receive()
-            let newState = processMessage oldState msg
+            let newState = processMessage inbox oldState msg
             return! messageLoop newState
         }
-        let electionTimeout = 
-            Elections.startElectionTimeout (TimeSpan.FromMilliseconds minElectionTimeout) (fun () -> inbox.Post ElectionTimeout)
-        messageLoop { initialState with electionTimeout = Some electionTimeout }
+        messageLoop { initialState with electionTimeout = Some (startNewElectionTimeout inbox) }
     )
 
     new(minElectionTimeout, maxElectionTimeout, nodeId) =
