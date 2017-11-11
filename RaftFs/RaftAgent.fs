@@ -23,10 +23,7 @@ type Message =
     | RequestVoteResult of RequestVoteArguments * RequestVoteResult
     | AppendEntiresResult of AppendEntriesArguments * AppendEntriesResult
 
-type RaftAgent (minElectionTimeout, maxElectionTimeout, nodeId, otherNodes:OtherNode array, initialState) =
-
-    let startNewElectionTimeout (agent:MailboxProcessor<Message>) = 
-        Elections.startElectionTimeout (TimeSpan.FromMilliseconds minElectionTimeout) (fun () -> agent.Post ElectionTimeout)
+type RaftAgent (startNewElectionTimeout, nodeId, otherNodes:OtherNode array, initialState) =
 
     let sendRequestVoteToAllNodes (agent:MailboxProcessor<Message>) request =
         let reply result = 
@@ -78,12 +75,6 @@ type RaftAgent (minElectionTimeout, maxElectionTimeout, nodeId, otherNodes:Other
         messageLoop { initialState with electionTimeout = Some (startNewElectionTimeout inbox) }
     )
 
-    static let defaultState = 
-        { state = Follower; currentTerm = 0; votedFor = None; electionTimeout = None }
-
-    new (minElectionTimeout, maxElectionTimeout, nodeId) =
-        RaftAgent(minElectionTimeout, maxElectionTimeout, nodeId, Array.empty, defaultState)
-
     member this.GetState () = 
         agent.PostAndAsyncReply(GetState)
 
@@ -92,3 +83,18 @@ type RaftAgent (minElectionTimeout, maxElectionTimeout, nodeId, otherNodes:Other
 
     member this.AppendEntries request =
         agent.PostAndAsyncReply(fun rc -> AppendEntries (request, rc))
+
+module RaftAgentWrapper =
+
+    let startNewElectionTimeout minElectionTimeout (agent:MailboxProcessor<Message>) = 
+        Elections.startElectionTimeout (TimeSpan.FromMilliseconds minElectionTimeout) (fun () -> agent.Post ElectionTimeout)
+
+    let defaultState = 
+        { state = Follower; currentTerm = 0; votedFor = None; electionTimeout = None }
+
+    let createAgent minElectionTimeout nodeId state =
+        match state with
+        | Some actualState ->
+            RaftAgent (startNewElectionTimeout minElectionTimeout, nodeId, Array.empty, actualState)
+        | None ->
+            RaftAgent (startNewElectionTimeout minElectionTimeout, nodeId, Array.empty, defaultState)

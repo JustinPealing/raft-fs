@@ -3,6 +3,7 @@ namespace RaftFs.Test
 open NUnit.Framework
 open RaftFs
 open RaftFs.Messages
+open RaftFs.RaftAgentWrapper
 
 module RaftAgentTest = 
 
@@ -12,7 +13,7 @@ module RaftAgentTest =
     /// </summary>
     [<Test>]
     let ``Election timeout for Follower``() = Async.RunSynchronously <| async {
-        let agent = RaftAgent(50.0, 50.0, 7)
+        let agent = createAgent 50.0 7 None
 
         // Check the node state is correctly initialized
         let! state = agent.GetState()
@@ -32,7 +33,7 @@ module RaftAgentTest =
     /// </summary>
     [<Test>]
     let ``Candidate election times out``() = Async.RunSynchronously <| async {
-        let agent = RaftAgent(50.0, 50.0, 7)
+        let agent = createAgent 50.0 7 None
 
         // Check the node state is correctly initialized
         let! state = agent.GetState()
@@ -53,7 +54,7 @@ module RaftAgentTest =
     /// </summary>
     [<Test>]
     let ``RequestVote from Candidate``() = Async.RunSynchronously <| async {
-        let agent = RaftAgent(50.0, 50.0, 7)
+        let agent = createAgent 50.0 7 None
 
         // Send the RequestVote RPC and check the response
         let! result = agent.RequestVote { term = 1; candidateId = 2; lastLogIndex = 0; lastLogTerm = 0 }
@@ -72,7 +73,7 @@ module RaftAgentTest =
     /// </summary>
     [<Test>]
     let ``Vote not granted to two candidates in the same term``() = Async.RunSynchronously <| async {
-        let agent = RaftAgent(50.0, 50.0, 7)
+        let agent = createAgent 50.0 7 None
 
         // Candidate 2 sends a RequestVote RPC, which should result in a granted vote
         let! result = agent.RequestVote { term = 1; candidateId = 2; lastLogIndex = 0; lastLogTerm = 0 }
@@ -95,7 +96,7 @@ module RaftAgentTest =
     [<Test>]
     let ``Votes not granted to earlier term``() = Async.RunSynchronously <| async {
         let state = { state = Follower; currentTerm = 2; votedFor = None; electionTimeout = None }
-        let agent = RaftAgent(50.0, 50.0, 7, Array.empty, state)
+        let agent = createAgent 50.0 7 (Some state)
 
         let! result = agent.RequestVote { term = 1; candidateId = 3; lastLogIndex = 0; lastLogTerm = 0 }
         Assert.IsFalse(result.voteGranted)
@@ -113,7 +114,7 @@ module RaftAgentTest =
     /// </summary>
     [<Test>]
     let ``Votes granted to later terms``() = Async.RunSynchronously <| async {
-        let agent = RaftAgent(50.0, 50.0, 7)
+        let agent = createAgent 50.0 7 None
 
         // Candidate 2 sends a RequestVote RPC, which should result in a granted vote
         let! result = agent.RequestVote { term = 1; candidateId = 2; lastLogIndex = 0; lastLogTerm = 0 }
