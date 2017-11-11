@@ -8,7 +8,7 @@ type NodeCommunicationMessage =
     | Ping
     | RequestVote of RequestVoteArguments
 
-type OtherNode (client:IRpcClient, raft:IRaftAgent) =
+type RemoteRaftNode (client:IRpcClient, raft:IRaftNode) =
 
     let agent = MailboxProcessor<NodeCommunicationMessage>.Start(fun inbox -> 
         let rec messageLoop() = async {
@@ -29,6 +29,6 @@ type OtherNode (client:IRpcClient, raft:IRaftAgent) =
         messageLoop()
     )
 
-    interface IOtherNode with
+    interface IRemoteRaftNode with
         member x.RequestVote request = 
             agent.Post (RequestVote request)

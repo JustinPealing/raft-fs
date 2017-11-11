@@ -5,7 +5,7 @@ open RaftFs
 open RaftFs.Messages
 open RaftFs.RaftAgentWrapper
 
-module RaftAgentTest = 
+module RaftNodeTest = 
 
     /// <summary>
     /// A node is initialized to the follower state. If no messages are recieved before an election timeout

@@ -11,10 +11,10 @@ type Message =
     | RequestVoteResult of RequestVoteArguments * RequestVoteResult
     | AppendEntiresResult of AppendEntriesArguments * AppendEntriesResult
 
-type RaftAgent (startNewElectionTimeout, nodeId, otherNodes:IOtherNode array, initialState) as this =
+type RaftNode (startNewElectionTimeout, nodeId, otherNodes:IRemoteRaftNode array, initialState) =
 
     let sendRequestVoteToAllNodes request =
-        Array.iter (fun (n:IOtherNode) -> n.RequestVote request) otherNodes
+        Array.iter (fun (n:IRemoteRaftNode) -> n.RequestVote request) otherNodes
 
     let electionTimeout (agent:MailboxProcessor<Message>) state =
         sendRequestVoteToAllNodes { term = 1; candidateId = 1; lastLogIndex = 1; lastLogTerm = 1}
@@ -62,7 +62,7 @@ type RaftAgent (startNewElectionTimeout, nodeId, otherNodes:IOtherNode array, in
     member x.ElectionTimeout () = 
         agent.Post ElectionTimeout
 
-    interface IRaftAgent with
+    interface IRaftNode with
         member x.GetState () = agent.PostAndAsyncReply(GetState)
         member x.RequestVote request = agent.PostAndAsyncReply(fun rc -> RequestVote (request, rc))
         member x.AppendEntries request = agent.PostAndAsyncReply(fun rc -> AppendEntries (request, rc))
@@ -79,6 +79,6 @@ module RaftAgentWrapper =
     let createAgent minElectionTimeout nodeId state =
         match state with
         | Some actualState ->
-            RaftAgent (startNewElectionTimeout minElectionTimeout, nodeId, Array.empty, actualState) :> IRaftAgent
+            RaftNode (startNewElectionTimeout minElectionTimeout, nodeId, Array.empty, actualState) :> IRaftNode
         | None ->
-            RaftAgent (startNewElectionTimeout minElectionTimeout, nodeId, Array.empty, defaultState) :> IRaftAgent
+            RaftNode (startNewElectionTimeout minElectionTimeout, nodeId, Array.empty, defaultState) :> IRaftNode

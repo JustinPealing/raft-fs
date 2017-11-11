@@ -10,8 +10,8 @@
     <Compile Include="Election.fs" />
     <Compile Include="Rpc.fs" />
     <Compile Include="AgentInterfaces.fs" />
-    <Compile Include="RaftAgent.fs" />
-    <Compile Include="OtherNode.fs" />
+    <Compile Include="RaftNode.fs" />
+    <Compile Include="RemoteRaftNode.fs" />
   </ItemGroup>
 
   <ItemGroup>
