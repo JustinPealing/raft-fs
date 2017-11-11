@@ -3,18 +3,6 @@ namespace RaftFs
 open System
 open Messages
 
-type NodeState =
-    | Follower
-    | Candidate
-    | Leader
-
-type State = {
-    state : NodeState
-    currentTerm : int
-    votedFor : int option
-    electionTimeout : Elections.ElectionTimeout option
-}
-
 type Message = 
     | GetState of AsyncReplyChannel<State>
     | ElectionTimeout
@@ -75,14 +63,15 @@ type RaftAgent (startNewElectionTimeout, nodeId, otherNodes:OtherNode array, ini
         messageLoop { initialState with electionTimeout = Some (startNewElectionTimeout inbox) }
     )
 
-    member this.GetState () = 
-        agent.PostAndAsyncReply(GetState)
+    interface IRaftAgent with
+        member this.GetState () = 
+            agent.PostAndAsyncReply(GetState)
 
-    member this.RequestVote request =
-        agent.PostAndAsyncReply(fun rc -> RequestVote (request, rc))
+        member this.RequestVote request =
+            agent.PostAndAsyncReply(fun rc -> RequestVote (request, rc))
 
-    member this.AppendEntries request =
-        agent.PostAndAsyncReply(fun rc -> AppendEntries (request, rc))
+        member this.AppendEntries request =
+            agent.PostAndAsyncReply(fun rc -> AppendEntries (request, rc))
 
 module RaftAgentWrapper =
 
@@ -95,6 +84,6 @@ module RaftAgentWrapper =
     let createAgent minElectionTimeout nodeId state =
         match state with
         | Some actualState ->
-            RaftAgent (startNewElectionTimeout minElectionTimeout, nodeId, Array.empty, actualState)
+            RaftAgent (startNewElectionTimeout minElectionTimeout, nodeId, Array.empty, actualState) :> IRaftAgent
         | None ->
-            RaftAgent (startNewElectionTimeout minElectionTimeout, nodeId, Array.empty, defaultState)
+            RaftAgent (startNewElectionTimeout minElectionTimeout, nodeId, Array.empty, defaultState) :> IRaftAgent
