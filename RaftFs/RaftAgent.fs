@@ -11,15 +11,10 @@ type Message =
     | RequestVoteResult of RequestVoteArguments * RequestVoteResult
     | AppendEntiresResult of AppendEntriesArguments * AppendEntriesResult
 
-type RaftAgent (startNewElectionTimeout, nodeId, otherNodes:OtherNode array, initialState) as this =
+type RaftAgent (startNewElectionTimeout, nodeId, otherNodes:IOtherNode array, initialState) as this =
 
     let sendRequestVoteToAllNodes request =
-        let send (node:OtherNode) = 
-            Async.Start <| async {
-                let! result = node.RequestVote request
-                this.RequestVoteResult request result
-            }
-        Seq.iter send otherNodes
+        Array.iter (fun (n:IOtherNode) -> n.RequestVote request) otherNodes
 
     let electionTimeout (agent:MailboxProcessor<Message>) state =
         sendRequestVoteToAllNodes { term = 1; candidateId = 1; lastLogIndex = 1; lastLogTerm = 1}
@@ -68,14 +63,10 @@ type RaftAgent (startNewElectionTimeout, nodeId, otherNodes:OtherNode array, ini
         agent.Post ElectionTimeout
 
     interface IRaftAgent with
-        member x.GetState () = 
-            agent.PostAndAsyncReply(GetState)
-
-        member x.RequestVote request =
-            agent.PostAndAsyncReply(fun rc -> RequestVote (request, rc))
-
-        member x.AppendEntries request =
-            agent.PostAndAsyncReply(fun rc -> AppendEntries (request, rc))
+        member x.GetState () = agent.PostAndAsyncReply(GetState)
+        member x.RequestVote request = agent.PostAndAsyncReply(fun rc -> RequestVote (request, rc))
+        member x.AppendEntries request = agent.PostAndAsyncReply(fun rc -> AppendEntries (request, rc))
+        member x.RequestVoteResult request result = agent.Post(RequestVoteResult (request, result))
 
 module RaftAgentWrapper =
 

@@ -6,9 +6,9 @@ open Rpc
 
 type NodeCommunicationMessage = 
     | Ping
-    | RequestVote of RequestVoteArguments * AsyncReplyChannel<RequestVoteResult> 
+    | RequestVote of RequestVoteArguments
 
-type OtherNode(client:IRpcClient) =
+type OtherNode (client:IRpcClient, raft:IRaftAgent) =
 
     let agent = MailboxProcessor<NodeCommunicationMessage>.Start(fun inbox -> 
         let rec messageLoop() = async {
@@ -17,9 +17,9 @@ type OtherNode(client:IRpcClient) =
             inbox.Post Ping
             match message with
             | Ping -> ()
-            | RequestVote (request, rc) -> 
-                let! response = client.Send request
-                ()
+            | RequestVote request -> 
+                let! result = client.Send request
+                raft.RequestVoteResult request result
             // | AppendEntries (request, rc) ->
             //     let! response = client.AppendEntries request
             //     ()
@@ -29,5 +29,6 @@ type OtherNode(client:IRpcClient) =
         messageLoop()
     )
 
-    member this.RequestVote request =
-        agent.PostAndAsyncReply(fun rc -> RequestVote (request, rc))
+    interface IOtherNode with
+        member x.RequestVote request = 
+            agent.Post (RequestVote request)

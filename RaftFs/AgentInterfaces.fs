@@ -19,3 +19,8 @@ type IRaftAgent =
     abstract member GetState : unit -> Async<State>
     abstract member RequestVote : RequestVoteArguments -> Async<RequestVoteResult>
     abstract member AppendEntries : AppendEntriesArguments -> Async<AppendEntriesResult>
+    abstract member RequestVoteResult : RequestVoteArguments -> RequestVoteResult -> unit
+
+type IOtherNode = 
+
+    abstract member RequestVote : RequestVoteArguments -> unit
