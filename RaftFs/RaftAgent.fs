@@ -11,20 +11,18 @@ type Message =
     | RequestVoteResult of RequestVoteArguments * RequestVoteResult
     | AppendEntiresResult of AppendEntriesArguments * AppendEntriesResult
 
-type RaftAgent (startNewElectionTimeout, nodeId, otherNodes:OtherNode array, initialState) =
+type RaftAgent (startNewElectionTimeout, nodeId, otherNodes:OtherNode array, initialState) as this =
 
-    let sendRequestVoteToAllNodes (agent:MailboxProcessor<Message>) request =
-        let reply result = 
-            agent.Post (RequestVoteResult (request, result))
+    let sendRequestVoteToAllNodes request =
         let send (node:OtherNode) = 
             Async.Start <| async {
                 let! result = node.RequestVote request
-                reply result
+                this.RequestVoteResult request result
             }
         Seq.iter send otherNodes
 
     let electionTimeout (agent:MailboxProcessor<Message>) state =
-        sendRequestVoteToAllNodes agent { term = 1; candidateId = 1; lastLogIndex = 1; lastLogTerm = 1}
+        sendRequestVoteToAllNodes { term = 1; candidateId = 1; lastLogIndex = 1; lastLogTerm = 1}
         { state with
             state = Candidate;
             currentTerm = state.currentTerm + 1;
@@ -63,14 +61,20 @@ type RaftAgent (startNewElectionTimeout, nodeId, otherNodes:OtherNode array, ini
         messageLoop { initialState with electionTimeout = Some (startNewElectionTimeout inbox) }
     )
 
+    member x.RequestVoteResult request result = 
+        agent.Post(RequestVoteResult (request, result))
+
+    member x.ElectionTimeout () = 
+        agent.Post ElectionTimeout
+
     interface IRaftAgent with
-        member this.GetState () = 
+        member x.GetState () = 
             agent.PostAndAsyncReply(GetState)
 
-        member this.RequestVote request =
+        member x.RequestVote request =
             agent.PostAndAsyncReply(fun rc -> RequestVote (request, rc))
 
-        member this.AppendEntries request =
+        member x.AppendEntries request =
             agent.PostAndAsyncReply(fun rc -> AppendEntries (request, rc))
 
 module RaftAgentWrapper =
