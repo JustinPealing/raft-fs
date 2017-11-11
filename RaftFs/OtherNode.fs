@@ -3,7 +3,6 @@ namespace RaftFs
 open System
 open Messages
 open Rpc
-open System.Net.NetworkInformation
 
 type NodeCommunicationMessage = 
     | Ping
@@ -19,7 +18,7 @@ type OtherNode(client:IRpcClient) =
             match message with
             | Ping -> ()
             | RequestVote (request, rc) -> 
-                let! response = client.RequestVote request
+                let! response = client.Send request
                 ()
             // | AppendEntries (request, rc) ->
             //     let! response = client.AppendEntries request

@@ -4,7 +4,6 @@ open System
 open System.IO
 open System.Net
 open System.Net.Sockets
-open Messages
 open ProtoBuf
 
 module Rpc = 
@@ -21,8 +20,7 @@ module Rpc =
 
     type IRpcClient =
         inherit IDisposable
-        abstract member AppendEntries : AppendEntriesArguments -> Async<AppendEntriesResult>
-        abstract member RequestVote : RequestVoteArguments -> Async<RequestVoteResult>
+        abstract member Send : 'Req -> Async<'Resp>
 
     let serialize obj =
         use stream = new MemoryStream()
@@ -33,7 +31,7 @@ module Rpc =
         use stream = new MemoryStream(data)
         Serializer.Deserialize<'T>(stream)
 
-    let CreateServer port appendEntries requestVote =
+    let CreateServer port processRpc =
         let server = TcpListener(IPAddress.Parse("127.0.0.1"), port)
         server.Start()
 
@@ -47,7 +45,7 @@ module Rpc =
             let! body = stream.ReadExactlyAsync count
             let request = deserialize body
 
-            let response = appendEntries request
+            let response = processRpc request
             let responseBody = serialize response
 
             let responseHeader = BitConverter.GetBytes responseBody.Length
@@ -84,5 +82,4 @@ module Rpc =
 
         {new IRpcClient with
             member this.Dispose() = ()
-            member this.AppendEntries req = rpc req
-            member this.RequestVote req = rpc req }
+            member this.Send req = rpc req }
