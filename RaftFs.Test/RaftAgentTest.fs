@@ -95,7 +95,7 @@ module RaftAgentTest =
     [<Test>]
     let ``Votes not granted to earlier term``() = Async.RunSynchronously <| async {
         let state = { state = Follower; currentTerm = 2; votedFor = None; electionTimeout = None }
-        let agent = RaftAgent(50.0, 50.0, 7, state)
+        let agent = RaftAgent(50.0, 50.0, 7, Array.empty, state)
 
         let! result = agent.RequestVote { term = 1; candidateId = 3; lastLogIndex = 0; lastLogTerm = 0 }
         Assert.IsFalse(result.voteGranted)

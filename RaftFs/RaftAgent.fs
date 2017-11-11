@@ -2,8 +2,6 @@ namespace RaftFs
 
 open System
 open Messages
-open System.Diagnostics.SymbolStore
-open Elections
 
 type NodeState =
     | Follower
@@ -22,13 +20,26 @@ type Message =
     | ElectionTimeout
     | RequestVote of RequestVoteArguments * AsyncReplyChannel<RequestVoteResult>
     | AppendEntries of AppendEntriesArguments * AsyncReplyChannel<AppendEntriesResult>
+    | RequestVoteResult of RequestVoteArguments * RequestVoteResult
+    | AppendEntiresResult of AppendEntriesArguments * AppendEntriesResult
 
-type RaftAgent(minElectionTimeout, maxElectionTimeout, nodeId, initialState) =
+type RaftAgent (minElectionTimeout, maxElectionTimeout, nodeId, otherNodes:OtherNode array, initialState) =
 
     let startNewElectionTimeout (agent:MailboxProcessor<Message>) = 
         Elections.startElectionTimeout (TimeSpan.FromMilliseconds minElectionTimeout) (fun () -> agent.Post ElectionTimeout)
 
-    let electionTimeout agent state =
+    let sendRequestVoteToAllNodes (agent:MailboxProcessor<Message>) request =
+        let reply result = 
+            agent.Post (RequestVoteResult (request, result))
+        let send (node:OtherNode) = 
+            Async.Start <| async {
+                let! result = node.RequestVote request
+                reply result
+            }
+        Seq.iter send otherNodes
+
+    let electionTimeout (agent:MailboxProcessor<Message>) state =
+        sendRequestVoteToAllNodes agent { term = 1; candidateId = 1; lastLogIndex = 1; lastLogTerm = 1}
         { state with
             state = Candidate;
             currentTerm = state.currentTerm + 1;
@@ -55,6 +66,8 @@ type RaftAgent(minElectionTimeout, maxElectionTimeout, nodeId, initialState) =
         | AppendEntries (request, rc) ->
             rc.Reply {term = 2; success = true}
             state
+        | RequestVoteResult (request, result) -> state
+        | AppendEntiresResult (request, result) -> state
 
     let agent = MailboxProcessor<Message>.Start(fun inbox -> 
         let rec messageLoop oldState = async {
@@ -65,10 +78,13 @@ type RaftAgent(minElectionTimeout, maxElectionTimeout, nodeId, initialState) =
         messageLoop { initialState with electionTimeout = Some (startNewElectionTimeout inbox) }
     )
 
-    new(minElectionTimeout, maxElectionTimeout, nodeId) =
-        RaftAgent(minElectionTimeout, maxElectionTimeout, nodeId, { state = Follower; currentTerm = 0; votedFor = None; electionTimeout = None })
+    static let defaultState = 
+        { state = Follower; currentTerm = 0; votedFor = None; electionTimeout = None }
 
-    member this.GetState() = 
+    new (minElectionTimeout, maxElectionTimeout, nodeId) =
+        RaftAgent(minElectionTimeout, maxElectionTimeout, nodeId, Array.empty, defaultState)
+
+    member this.GetState () = 
         agent.PostAndAsyncReply(GetState)
 
     member this.RequestVote request =
