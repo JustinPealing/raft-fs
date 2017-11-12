@@ -2,7 +2,7 @@ namespace RaftFs.Test
 
 open System
 open NUnit.Framework
-open RaftFs
+open RaftFs.IdleTimeout
 
 module ElectionTimeoutTest = 
     
@@ -15,7 +15,7 @@ module ElectionTimeoutTest =
         let mutable endTime = DateTime.MinValue
         let callback() =
             endTime <- DateTime.UtcNow
-        Elections.startElectionTimeout (TimeSpan.FromMilliseconds 100.0) callback |> ignore
+        startActivityTimeout (TimeSpan.FromMilliseconds 100.0) callback |> ignore
         Assert.AreEqual(DateTime.MinValue, endTime)
         do! Async.Sleep 110
         Assert.IsTrue((endTime - start).TotalMilliseconds > 0.0)

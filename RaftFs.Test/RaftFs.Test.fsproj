@@ -13,7 +13,7 @@
   <ItemGroup>
     <Compile Include="RpcTest.fs" />
     <Compile Include="RaftNodeTest.fs" />
-    <Compile Include="ElectionTimeoutTest.fs" />
+    <Compile Include="IdleTimeoutTest.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

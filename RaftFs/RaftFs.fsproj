@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <Compile Include="Messages.fs" />
-    <Compile Include="Election.fs" />
+    <Compile Include="IdleTimeout.fs" />
     <Compile Include="Rpc.fs" />
     <Compile Include="AgentInterfaces.fs" />
     <Compile Include="RaftNode.fs" />

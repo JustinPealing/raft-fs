@@ -2,6 +2,7 @@ namespace RaftFs
 
 open System
 open Messages
+open RaftFs.IdleTimeout
 
 type Message = 
     | GetState of AsyncReplyChannel<State>
@@ -71,7 +72,7 @@ type RaftNode (startNewElectionTimeout, nodeId, otherNodes:IRemoteRaftNode array
 module RaftAgentWrapper =
 
     let startNewElectionTimeout minElectionTimeout (agent:MailboxProcessor<Message>) = 
-        Elections.startElectionTimeout (TimeSpan.FromMilliseconds minElectionTimeout) (fun () -> agent.Post ElectionTimeout)
+        startActivityTimeout (TimeSpan.FromMilliseconds minElectionTimeout) (fun () -> agent.Post ElectionTimeout)
 
     let defaultState = 
         { state = Follower; currentTerm = 0; votedFor = None; electionTimeout = None }

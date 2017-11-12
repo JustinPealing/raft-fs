@@ -1,6 +1,7 @@
 namespace RaftFs
 
 open RaftFs.Messages
+open RaftFs.IdleTimeout
 
 type NodeLeaderState =
     | Follower
@@ -11,7 +12,7 @@ type State = {
     state : NodeLeaderState
     currentTerm : int
     votedFor : int option
-    electionTimeout : Elections.ElectionTimeout option
+    electionTimeout : ActivityTimeoutInfo option
 }
 
 type IRaftNode =
